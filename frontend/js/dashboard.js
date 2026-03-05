@@ -3,8 +3,26 @@
    Module navigation, video player, progress tracking
    ══════════════════════════════════════════════════════════ */
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     if (!EasyTeach.requireAuth('student')) return;
+
+    // Verify payment status from backend
+    try {
+        const profile = await EasyTeach.api('/api/profile');
+        if (profile && !profile.paid) {
+            // User hasn't paid — redirect to payment
+            try {
+                const payRes = await EasyTeach.api('/api/payment/create', {
+                    method: 'POST',
+                    body: JSON.stringify({ email: profile.email, name: profile.name })
+                });
+                if (payRes.checkout_url) {
+                    window.location.href = payRes.checkout_url;
+                    return;
+                }
+            } catch (e) { /* MP not configured, allow access */ }
+        }
+    } catch (e) { /* If profile check fails, continue */ }
 
     const user = EasyTeach.getUser();
     let allModules = [];

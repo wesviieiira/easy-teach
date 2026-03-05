@@ -222,9 +222,34 @@
 
                 localStorage.setItem('token', data.data.token);
                 localStorage.setItem('user', JSON.stringify(data.data.user));
-                window.EasyTeach?.showToast?.('Conta criada com sucesso!', 'success');
 
-                setTimeout(() => { window.location.href = 'dashboard.html'; }, 500);
+                // If user already paid (came from payment flow), go to dashboard
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('payment') === 'success') {
+                    window.EasyTeach?.showToast?.('Conta criada com sucesso!', 'success');
+                    setTimeout(() => { window.location.href = 'dashboard.html'; }, 500);
+                    return;
+                }
+
+                // Otherwise, redirect to Mercado Pago
+                btn.innerHTML = '<span class="spinner"></span> Redirecionando ao pagamento...';
+                const payRes = await fetch(`${API}/api/payment/create`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: document.getElementById('registerEmail').value,
+                        name: document.getElementById('registerName').value
+                    })
+                });
+                const payData = await payRes.json();
+
+                if (payData.success && payData.data.checkout_url) {
+                    window.location.href = payData.data.checkout_url;
+                } else {
+                    // MP not configured — go to dashboard
+                    window.EasyTeach?.showToast?.('Conta criada com sucesso!', 'success');
+                    setTimeout(() => { window.location.href = 'dashboard.html'; }, 500);
+                }
             } catch (err) {
                 showError(err.message || 'Erro ao criar conta');
                 btn.textContent = 'Criar Conta';

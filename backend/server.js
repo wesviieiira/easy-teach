@@ -19,23 +19,7 @@ const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
 // ── Middleware ────────────────────────────────────────────
-app.use(cors({
-    origin: function (origin, callback) {
-        // Allow requests with no origin (mobile apps, curl, etc)
-        if (!origin) return callback(null, true);
-        const allowed = [
-            process.env.FRONTEND_URL,
-            'http://localhost:3000',
-            'http://localhost:5500'
-        ].filter(Boolean);
-        // If no FRONTEND_URL set, allow all
-        if (allowed.length <= 2 || allowed.includes(origin)) {
-            return callback(null, true);
-        }
-        callback(new Error('Not allowed by CORS'));
-    },
-    credentials: true
-}));
+app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(uploadsDir));
 

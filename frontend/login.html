@@ -185,13 +185,46 @@
                 const data = await res.json();
                 if (!data.success) throw new Error(data.error);
 
-                localStorage.setItem('token', data.data.token);
-                localStorage.setItem('user', JSON.stringify(data.data.user));
-                window.EasyTeach?.showToast?.('Login realizado com sucesso!', 'success');
+                const user = data.data.user;
 
-                setTimeout(() => {
-                    window.location.href = data.data.user.role === 'admin' ? 'admin.html' : 'dashboard.html';
-                }, 500);
+                // Admin always gets access
+                if (user.role === 'admin') {
+                    localStorage.setItem('token', data.data.token);
+                    localStorage.setItem('user', JSON.stringify(user));
+                    window.EasyTeach?.showToast?.('Login realizado com sucesso!', 'success');
+                    setTimeout(() => { window.location.href = 'admin.html'; }, 500);
+                    return;
+                }
+
+                // Student: check if paid
+                if (!user.paid) {
+                    // Redirect to MP checkout without saving token
+                    btn.innerHTML = '<span class="spinner"></span> Redirecionando ao pagamento...';
+                    try {
+                        const payRes = await fetch(`${API}/api/payment/create`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email: user.email, name: user.name })
+                        });
+                        const payData = await payRes.json();
+                        if (payData.success && payData.data.checkout_url) {
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('user');
+                            window.location.replace(payData.data.checkout_url);
+                            return;
+                        }
+                    } catch (e) { /* MP not configured */ }
+                    showError('Pagamento pendente. Complete o pagamento para acessar a plataforma.');
+                    btn.textContent = 'Entrar';
+                    btn.disabled = false;
+                    return;
+                }
+
+                // Paid student — save token and go to dashboard
+                localStorage.setItem('token', data.data.token);
+                localStorage.setItem('user', JSON.stringify(user));
+                window.EasyTeach?.showToast?.('Login realizado com sucesso!', 'success');
+                setTimeout(() => { window.location.href = 'dashboard.html'; }, 500);
             } catch (err) {
                 showError(err.message || 'Erro ao fazer login');
                 btn.textContent = 'Entrar';

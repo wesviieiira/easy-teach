@@ -7,22 +7,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!EasyTeach.requireAuth('student')) return;
 
     // Verify payment status from backend
-    try {
-        const profile = await EasyTeach.api('/api/profile');
-        if (profile && !profile.paid) {
-            // User hasn't paid — redirect to payment
-            try {
-                const payRes = await EasyTeach.api('/api/payment/create', {
-                    method: 'POST',
-                    body: JSON.stringify({ email: profile.email, name: profile.name })
-                });
-                if (payRes.checkout_url) {
-                    window.location.href = payRes.checkout_url;
-                    return;
-                }
-            } catch (e) { /* MP not configured, allow access */ }
-        }
-    } catch (e) { /* If profile check fails, continue */ }
+    async function checkPayment() {
+        try {
+            const profile = await EasyTeach.api('/api/profile');
+            if (profile && !profile.paid) {
+                // User hasn't paid — redirect to payment
+                try {
+                    const payRes = await EasyTeach.api('/api/payment/create', {
+                        method: 'POST',
+                        body: JSON.stringify({ email: profile.email, name: profile.name })
+                    });
+                    if (payRes.checkout_url) {
+                        window.location.replace(payRes.checkout_url);
+                        return true; // blocked
+                    }
+                } catch (e) { /* MP not configured, allow access */ }
+                // If MP not configured, show paywall message
+                document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0e1a;color:#fff;flex-direction:column;font-family:sans-serif"><h2>⏳ Pagamento pendente</h2><p>Você precisa efetuar o pagamento para acessar a plataforma.</p><a href="index.html#pricing" style="margin-top:20px;padding:12px 24px;background:#10b981;color:#fff;border-radius:8px;text-decoration:none">Ir para pagamento</a></div>';
+                return true; // blocked
+            }
+        } catch (e) { /* If profile check fails, continue */ }
+        return false; // not blocked
+    }
+
+    const blocked = await checkPayment();
+    if (blocked) return;
+
+    // Also check on bfcache restore (browser back button)
+    window.addEventListener('pageshow', async (event) => {
+        if (event.persisted) await checkPayment();
+    });
 
     const user = EasyTeach.getUser();
     let allModules = [];

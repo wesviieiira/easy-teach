@@ -244,7 +244,7 @@
                 const payData = await payRes.json();
 
                 if (payData.success && payData.data.checkout_url) {
-                    window.location.href = payData.data.checkout_url;
+                    window.location.replace(payData.data.checkout_url);
                 } else {
                     // MP not configured — go to dashboard
                     window.EasyTeach?.showToast?.('Conta criada com sucesso!', 'success');

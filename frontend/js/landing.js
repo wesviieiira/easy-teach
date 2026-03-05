@@ -85,7 +85,8 @@ document.addEventListener('DOMContentLoaded', () => {
             buyBtn.disabled = true;
 
             try {
-                const res = await fetch('http://localhost:3000/api/payment/create', {
+                const apiUrl = window.__API_URL__ || 'http://localhost:3000';
+                const res = await fetch(`${apiUrl}/api/payment/create`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email: 'visitor@easyteach.com' })

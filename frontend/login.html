@@ -220,18 +220,17 @@
                 const data = await res.json();
                 if (!data.success) throw new Error(data.error);
 
-                localStorage.setItem('token', data.data.token);
-                localStorage.setItem('user', JSON.stringify(data.data.user));
-
-                // If user already paid (came from payment flow), go to dashboard
+                // If user already paid (came from payment flow), save token and go to dashboard
                 const params = new URLSearchParams(window.location.search);
                 if (params.get('payment') === 'success') {
+                    localStorage.setItem('token', data.data.token);
+                    localStorage.setItem('user', JSON.stringify(data.data.user));
                     window.EasyTeach?.showToast?.('Conta criada com sucesso!', 'success');
                     setTimeout(() => { window.location.href = 'dashboard.html'; }, 500);
                     return;
                 }
 
-                // Otherwise, redirect to Mercado Pago
+                // User hasn't paid — redirect to Mercado Pago (DON'T save token yet)
                 btn.innerHTML = '<span class="spinner"></span> Redirecionando ao pagamento...';
                 const payRes = await fetch(`${API}/api/payment/create`, {
                     method: 'POST',
@@ -244,9 +243,14 @@
                 const payData = await payRes.json();
 
                 if (payData.success && payData.data.checkout_url) {
+                    // Clear any saved token before redirecting
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
                     window.location.replace(payData.data.checkout_url);
                 } else {
-                    // MP not configured — go to dashboard
+                    // MP not configured — save token and go to dashboard
+                    localStorage.setItem('token', data.data.token);
+                    localStorage.setItem('user', JSON.stringify(data.data.user));
                     window.EasyTeach?.showToast?.('Conta criada com sucesso!', 'success');
                     setTimeout(() => { window.location.href = 'dashboard.html'; }, 500);
                 }

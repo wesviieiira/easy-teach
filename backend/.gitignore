@@ -1,0 +1,5 @@
+node_modules/
+easyteach.db
+.env
+uploads/
+*.log

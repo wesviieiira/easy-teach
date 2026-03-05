@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Easy Teach — Portal do Aluno</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪞</text></svg>">
+</head>
+
+<body>
+
+    <div class="dashboard">
+        <!-- ═══ SIDEBAR ═══ -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="index.html" class="navbar-logo">
+                    <div class="logo-icon" style="width:30px;height:30px;font-size:1rem;">🪞</div>
+                    <span style="font-size:1.2rem;">Easy Teach</span>
+                </a>
+                <button class="btn btn-ghost" id="logoutBtn" style="font-size:0.8rem;padding:6px 12px;">Sair</button>
+            </div>
+
+            <!-- Profile link -->
+            <a href="profile.html" class="sidebar-profile-link" id="sidebarProfileLink">
+                <div class="sidebar-profile-avatar" id="sidebarAvatar">
+                    <span id="sidebarAvatarInitials">?</span>
+                </div>
+                <span id="sidebarProfileName">Meu perfil</span>
+            </a>
+
+            <!-- Progress -->
+            <div class="sidebar-progress">
+                <div class="sidebar-progress-label">
+                    <span>Seu Progresso</span>
+                    <span class="sidebar-progress-percent" id="progressPercent">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-bar-fill" id="progressBar" style="width: 0%"></div>
+                </div>
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-top:var(--space-2);">
+                    <span id="progressCompleted">0</span> de <span id="progressTotal">0</span> aulas concluídas
+                </div>
+            </div>
+
+            <!-- Modules list -->
+            <div class="sidebar-modules" id="sidebarModules">
+                <!-- Populated by JS -->
+            </div>
+        </aside>
+
+        <!-- ═══ MAIN CONTENT ═══ -->
+        <div class="main-content">
+            <div class="content-header">
+                <h2 id="lessonTitle">Selecione uma aula</h2>
+                <div style="display:flex;align-items:center;gap:var(--space-3);">
+                    <span id="userName" style="color:var(--text-secondary);font-size:0.9rem;"></span>
+                </div>
+            </div>
+
+            <div class="content-body">
+                <!-- Video player -->
+                <div class="video-container" id="videoContainer">
+                    <div class="video-placeholder" id="videoPlaceholder">
+                        <span class="video-placeholder-icon">🎬</span>
+                        <span>Selecione uma aula no menu lateral para começar</span>
+                    </div>
+                </div>
+
+                <!-- Lesson actions -->
+                <div class="lesson-actions" id="lessonActions" style="display:none;">
+                    <button class="btn btn-primary" id="markCompleteBtn">
+                        ✓ Marcar como Concluída
+                    </button>
+                    <a class="btn btn-outline" id="downloadPdfBtn" style="display:none;" target="_blank">
+                        📄 Baixar Material PDF
+                    </a>
+                    <button class="btn btn-ghost" id="prevLessonBtn">← Anterior</button>
+                    <button class="btn btn-ghost" id="nextLessonBtn">Próxima →</button>
+                </div>
+
+                <!-- Lesson info -->
+                <div class="card lesson-info" id="lessonInfo" style="display:none;">
+                    <h3 id="lessonInfoTitle" style="font-family:var(--font-heading);margin-bottom:var(--space-3);"></h3>
+                    <p id="lessonInfoDesc" style="color:var(--text-secondary);"></p>
+                </div>
+
+                <!-- Comments section -->
+                <div class="comments-section" id="commentsSection" style="display:none;">
+                    <button class="comments-toggle" id="commentsToggle">
+                        <span>💬 Comentários <span class="comments-count" id="commentsCount"></span></span>
+                        <span class="comments-chevron" id="commentsChevron">▼</span>
+                    </button>
+                    <div class="comments-body" id="commentsBody">
+                        <div class="comment-form">
+                            <textarea class="form-input comment-input" id="commentInput" rows="3"
+                                placeholder="Escreva um comentário..."></textarea>
+                            <button class="btn btn-primary comment-submit-btn" id="submitCommentBtn">Enviar</button>
+                        </div>
+                        <div class="comments-list" id="commentsList">
+                            <!-- Populated by JS -->
+                        </div>
+                        <div class="comments-pagination" id="commentsPagination" style="display:none;">
+                            <button class="btn btn-ghost" id="commentsPrev" disabled>← Anterior</button>
+                            <span class="comments-page-info" id="commentsPageInfo"></span>
+                            <button class="btn btn-ghost" id="commentsNext">Próxima →</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Welcome state (no lesson selected) -->
+                <div id="welcomeState">
+                    <div class="card" style="text-align:center;padding:var(--space-12);">
+                        <div style="font-size:4rem;margin-bottom:var(--space-6);">👋</div>
+                        <h2 style="font-family:var(--font-heading);font-size:1.5rem;margin-bottom:var(--space-4);"
+                            id="welcomeTitle">Bem-vindo!</h2>
+                        <p style="color:var(--text-secondary);max-width:500px;margin:0 auto;">
+                            Selecione um módulo no menu lateral e clique em uma aula para começar sua jornada de
+                            aprendizado.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ SUMMARY PANEL (RIGHT) ═══ -->
+        <aside class="summary-panel" id="summaryPanel">
+            <div class="summary-header">
+                <h3>📌 Resumo da Aula</h3>
+                <button class="btn btn-ghost" id="closeSummaryBtn" style="font-size:0.8rem;padding:4px 8px;">✕</button>
+            </div>
+            <div class="summary-body" id="summaryContent"
+                style="color:var(--text-secondary);font-size:0.95rem;line-height:1.6;">
+                <!-- Populated by JS -->
+            </div>
+        </aside>
+    </div>
+
+    <!-- Sidebar toggle button (mobile) -->
+    <button class="sidebar-toggle-btn" id="sidebarToggle">☰</button>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="js/app.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+
+</html>

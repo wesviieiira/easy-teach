@@ -102,9 +102,17 @@ app.post('/api/auth/register', async (req, res) => {
         }
 
         const hash = bcrypt.hashSync(password, 10);
+
+        // Check if this email has an approved payment
+        const payment = await queryOne(
+            "SELECT id FROM payments WHERE email = $1 AND status = 'approved'",
+            [email.toLowerCase().trim()]
+        );
+        const isPaid = payment ? 1 : 0;
+
         const result = await runSql(
-            'INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4)',
-            [name.trim(), email.toLowerCase().trim(), hash, 'student']
+            'INSERT INTO users (name, email, password_hash, role, paid) VALUES ($1, $2, $3, $4, $5)',
+            [name.trim(), email.toLowerCase().trim(), hash, 'student', isPaid]
         );
 
         const token = jwt.sign(
@@ -653,16 +661,45 @@ app.post('/api/payment/create', async (req, res) => {
     }
 });
 
-app.post('/api/payment/webhook', (req, res) => {
+app.post('/api/payment/webhook', async (req, res) => {
     try {
         const { type, data } = req.body;
-        if (type === 'payment') {
-            console.log('📩 Payment webhook received:', data?.id);
+        if (type === 'payment' && data?.id) {
+            console.log('📩 Payment webhook received:', data.id);
+
+            // Verify payment with Mercado Pago
+            if (process.env.MP_ACCESS_TOKEN && !process.env.MP_ACCESS_TOKEN.startsWith('TEST-0000')) {
+                const { MercadoPagoConfig, Payment } = require('mercadopago');
+                const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
+                const paymentApi = new Payment(client);
+
+                const mpPayment = await paymentApi.get({ id: data.id });
+                const email = mpPayment.payer?.email;
+                const status = mpPayment.status; // approved, pending, rejected
+
+                console.log(`📧 Payment for ${email}: ${status}`);
+
+                if (email) {
+                    // Update payment record
+                    await runSql(
+                        'UPDATE payments SET status = $1, mp_payment_id = $2 WHERE email = $3 AND status = $4',
+                        [status, String(data.id), email.toLowerCase(), 'pending']
+                    );
+
+                    // If approved, mark user as paid (if user exists)
+                    if (status === 'approved') {
+                        await runSql(
+                            'UPDATE users SET paid = 1, updated_at = CURRENT_TIMESTAMP WHERE email = $1',
+                            [email.toLowerCase()]
+                        );
+                    }
+                }
+            }
         }
         res.sendStatus(200);
     } catch (err) {
         console.error('Webhook error:', err);
-        res.sendStatus(500);
+        res.sendStatus(200); // Always return 200 to MP
     }
 });
 

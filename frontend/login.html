@@ -240,52 +240,64 @@
             btn.innerHTML = '<span class="spinner"></span>';
             btn.disabled = true;
 
+            const name = document.getElementById('registerName').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+
+            // Validate
+            if (!name || !email || !password) { showError('Preencha todos os campos'); btn.textContent = 'Criar Conta'; btn.disabled = false; return; }
+            if (password.length < 6) { showError('Senha deve ter no mínimo 6 caracteres'); btn.textContent = 'Criar Conta'; btn.disabled = false; return; }
+
+            const params = new URLSearchParams(window.location.search);
+
             try {
-                const res = await fetch(`${API}/api/auth/register`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name: document.getElementById('registerName').value,
-                        email: document.getElementById('registerEmail').value,
-                        password: document.getElementById('registerPassword').value
-                    })
-                });
-                const data = await res.json();
-                if (!data.success) throw new Error(data.error);
-
-                // If user already paid (came from payment flow), save token and go to dashboard
-                const params = new URLSearchParams(window.location.search);
                 if (params.get('payment') === 'success') {
+                    // AFTER payment: create the account now
+                    const res = await fetch(`${API}/api/auth/register`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, email, password })
+                    });
+                    const data = await res.json();
+                    if (!data.success) throw new Error(data.error);
+
                     localStorage.setItem('token', data.data.token);
                     localStorage.setItem('user', JSON.stringify(data.data.user));
+                    sessionStorage.removeItem('pendingRegister');
                     window.EasyTeach?.showToast?.('Conta criada com sucesso!', 'success');
                     setTimeout(() => { window.location.href = 'dashboard.html'; }, 500);
-                    return;
-                }
-
-                // User hasn't paid — redirect to Mercado Pago (DON'T save token yet)
-                btn.innerHTML = '<span class="spinner"></span> Redirecionando ao pagamento...';
-                const payRes = await fetch(`${API}/api/payment/create`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email: document.getElementById('registerEmail').value,
-                        name: document.getElementById('registerName').value
-                    })
-                });
-                const payData = await payRes.json();
-
-                if (payData.success && payData.data.checkout_url) {
-                    // Clear any saved token before redirecting
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('user');
-                    window.location.replace(payData.data.checkout_url);
                 } else {
-                    // MP not configured — save token and go to dashboard
-                    localStorage.setItem('token', data.data.token);
-                    localStorage.setItem('user', JSON.stringify(data.data.user));
-                    window.EasyTeach?.showToast?.('Conta criada com sucesso!', 'success');
-                    setTimeout(() => { window.location.href = 'dashboard.html'; }, 500);
+                    // BEFORE payment: don't create account, redirect to MP first
+                    btn.innerHTML = '<span class="spinner"></span> Redirecionando ao pagamento...';
+
+                    // Save form data temporarily
+                    sessionStorage.setItem('pendingRegister', JSON.stringify({ name, email }));
+
+                    const payRes = await fetch(`${API}/api/payment/create`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, name })
+                    });
+                    const payData = await payRes.json();
+
+                    if (payData.success && payData.data.checkout_url) {
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('user');
+                        window.location.replace(payData.data.checkout_url);
+                    } else {
+                        // MP not configured — create account directly (dev mode)
+                        const res = await fetch(`${API}/api/auth/register`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name, email, password })
+                        });
+                        const data = await res.json();
+                        if (!data.success) throw new Error(data.error);
+                        localStorage.setItem('token', data.data.token);
+                        localStorage.setItem('user', JSON.stringify(data.data.user));
+                        window.EasyTeach?.showToast?.('Conta criada com sucesso!', 'success');
+                        setTimeout(() => { window.location.href = 'dashboard.html'; }, 500);
+                    }
                 }
             } catch (err) {
                 showError(err.message || 'Erro ao criar conta');
@@ -357,6 +369,12 @@
         } else if (params.get('payment') === 'success') {
             window.EasyTeach?.showToast?.('Pagamento confirmado! Crie sua conta para acessar.', 'success');
             showTab('register');
+            // Auto-fill from saved registration data
+            const pending = JSON.parse(sessionStorage.getItem('pendingRegister') || 'null');
+            if (pending) {
+                document.getElementById('registerName').value = pending.name || '';
+                document.getElementById('registerEmail').value = pending.email || '';
+            }
         } else {
             const token = localStorage.getItem('token');
             const user = JSON.parse(localStorage.getItem('user') || 'null');
